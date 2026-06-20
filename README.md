@@ -18,6 +18,9 @@ returns, and **net profit** — all in one place, working fully offline.
 - **GST tax reporting** — GST backed out of inclusive prices, split into
   CGST/SGST (intra-state) or IGST (inter-state), summarised by rate for GSTR
   filing prep.
+- **Settings** — business profile (name, GSTIN, home state, default GST rate).
+  The home state auto-decides CGST/SGST vs IGST for each sale based on the
+  buyer's state.
 - **Profit & Loss** — taxable revenue minus product cost and marketplace fees.
 - **Export** — share a full sales CSV or a GST summary CSV.
 - **API-ready** — a `MarketplaceApi` interface with Amazon SP-API and Flipkart
@@ -64,7 +67,7 @@ lib/
   repositories/  Data access for sales and products
   providers/     State management (provider package)
   services/      CSV import/export, future marketplace API layer
-  screens/       Dashboard, Orders, Inventory, Reports, Import, Add/Edit
+  screens/       Dashboard, Orders, Inventory, Reports, Settings, Import, Add/Edit
   widgets/       Summary cards, charts, chips, date-range bar
   utils/         Formatters and theme
 test/            GST and summary calculation tests

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'providers/inventory_provider.dart';
 import 'providers/sales_provider.dart';
+import 'providers/settings_provider.dart';
 import 'screens/home_shell.dart';
 import 'utils/theme.dart';
 
@@ -20,6 +21,7 @@ class SalesTrackerApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => SalesProvider()..load()),
         ChangeNotifierProvider(create: (_) => InventoryProvider()..load()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()..load()),
       ],
       child: MaterialApp(
         title: 'Sales Tracker',

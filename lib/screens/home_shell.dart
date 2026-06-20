@@ -4,6 +4,7 @@ import 'dashboard_screen.dart';
 import 'sales_list_screen.dart';
 import 'inventory_screen.dart';
 import 'reports_screen.dart';
+import 'settings_screen.dart';
 
 /// Bottom-navigation container hosting the four primary tabs.
 class HomeShell extends StatefulWidget {
@@ -21,6 +22,7 @@ class _HomeShellState extends State<HomeShell> {
     SalesListScreen(),
     InventoryScreen(),
     ReportsScreen(),
+    SettingsScreen(),
   ];
 
   @override
@@ -50,6 +52,11 @@ class _HomeShellState extends State<HomeShell> {
             icon: Icon(Icons.insights_outlined),
             selectedIcon: Icon(Icons.insights),
             label: 'Reports',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings),
+            label: 'Settings',
           ),
         ],
       ),

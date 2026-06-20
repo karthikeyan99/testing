@@ -5,7 +5,9 @@ import '../models/enums.dart';
 import '../models/sale.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/sales_provider.dart';
+import '../providers/settings_provider.dart';
 import '../utils/formatters.dart';
+import '../utils/indian_states.dart';
 
 /// Form to create or edit a single sale/order line.
 class AddEditSaleScreen extends StatefulWidget {
@@ -24,6 +26,7 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
   late DateTime _date;
   late bool _interState;
   late double _gstRate;
+  String? _buyerState;
 
   final _orderId = TextEditingController();
   final _sku = TextEditingController();
@@ -46,7 +49,12 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
     _status = s?.status ?? OrderStatus.delivered;
     _date = s?.orderDate ?? DateTime.now();
     _interState = s?.isInterState ?? false;
-    _gstRate = s?.gstRate ?? 18;
+    // Guard against imported values that don't match a known state, otherwise
+    // the dropdown asserts on an out-of-range value.
+    _buyerState = kIndianStates.contains(s?.buyerState) ? s?.buyerState : null;
+    // For a new sale, seed the GST rate from the saved business default.
+    final profile = context.read<SettingsProvider>().profile;
+    _gstRate = s?.gstRate ?? profile.defaultGstRate;
     if (s != null) {
       _orderId.text = s.orderId;
       _sku.text = s.sku;
@@ -93,6 +101,7 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
       gstRate: _gstRate,
       isInterState: _interState,
       status: _status,
+      buyerState: _buyerState,
     );
   }
 
@@ -217,17 +226,21 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
               children: [
                 Expanded(child: _gstDropdown()),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Inter-state', style: TextStyle(fontSize: 13)),
-                    subtitle: Text(_interState ? 'IGST' : 'CGST + SGST',
-                        style: const TextStyle(fontSize: 11)),
-                    value: _interState,
-                    onChanged: (v) => setState(() => _interState = v),
-                  ),
-                ),
+                Expanded(child: _buyerStateDropdown()),
               ],
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Inter-state sale', style: TextStyle(fontSize: 13)),
+              subtitle: Text(
+                _interState
+                    ? 'IGST @ ${_gstRate.toStringAsFixed(0)}%'
+                    : 'CGST + SGST (split ${_gstRate.toStringAsFixed(0)}%)',
+                style: const TextStyle(fontSize: 11),
+              ),
+              value: _interState,
+              onChanged: (v) => setState(() => _interState = v),
             ),
             const SizedBox(height: 16),
             _statusDropdown(),
@@ -304,6 +317,28 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
           DropdownMenuItem(value: r, child: Text('${r.toStringAsFixed(0)}%')),
       ],
       onChanged: (v) => setState(() => _gstRate = v ?? 18),
+    );
+  }
+
+  Widget _buyerStateDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _buyerState,
+      isExpanded: true,
+      decoration: const InputDecoration(labelText: 'Buyer state', isDense: true),
+      items: [
+        for (final s in kIndianStates)
+          DropdownMenuItem(value: s, child: Text(s, overflow: TextOverflow.ellipsis)),
+      ],
+      onChanged: (v) {
+        setState(() {
+          _buyerState = v;
+          // Auto-decide IGST vs CGST/SGST from the saved home state.
+          final profile = context.read<SettingsProvider>().profile;
+          if (profile.homeState.isNotEmpty) {
+            _interState = profile.isInterStateFor(v, fallback: _interState);
+          }
+        });
+      },
     );
   }
 

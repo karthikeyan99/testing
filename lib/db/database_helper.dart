@@ -7,7 +7,7 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._();
 
   static const _dbName = 'sales_tracker.db';
-  static const _dbVersion = 1;
+  static const _dbVersion = 2;
 
   Database? _db;
 
@@ -23,10 +23,26 @@ class DatabaseHelper {
       path,
       version: _dbVersion,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
     );
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await _createSettingsTable(db);
+    }
+  }
+
+  Future<void> _createSettingsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      )
+    ''');
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -72,6 +88,8 @@ class DatabaseHelper {
       ON sales (marketplace, orderId, sku)
     ''');
     await db.execute('CREATE INDEX idx_sales_date ON sales (orderDate)');
+
+    await _createSettingsTable(db);
   }
 
   Future<void> close() async {
