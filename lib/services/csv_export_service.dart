@@ -1,15 +1,12 @@
-import 'dart:io';
-
 import 'package:csv/csv.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../models/sale.dart';
+import 'csv_saver.dart';
 
-/// Exports sales (and a GST summary) to CSV files and opens the share sheet.
+/// Exports sales (and a GST summary) to CSV. On native platforms this opens the
+/// share sheet; on web it downloads the file.
 class CsvExportService {
-  Future<File> exportSales(List<Sale> sales) async {
+  Future<void> exportSales(List<Sale> sales) async {
     final rows = <List<Object?>>[
       [
         'Marketplace',
@@ -64,7 +61,7 @@ class CsvExportService {
   }
 
   /// GST summary grouped by rate — the shape needed for GSTR filing prep.
-  Future<File> exportGstSummary(List<Sale> sales) async {
+  Future<void> exportGstSummary(List<Sale> sales) async {
     final byRate = <double, List<double>>{}; // rate -> [taxable, cgst, sgst, igst]
     for (final s in sales) {
       if (!s.status.countsAsSale) continue;
@@ -91,14 +88,10 @@ class CsvExportService {
     return _writeAndShare('gst_summary', rows);
   }
 
-  Future<File> _writeAndShare(String prefix, List<List<Object?>> rows) async {
+  Future<void> _writeAndShare(String prefix, List<List<Object?>> rows) async {
     final csv = const ListToCsvConverter().convert(rows);
-    final dir = await getTemporaryDirectory();
     final stamp = DateTime.now().millisecondsSinceEpoch;
-    final file = File(p.join(dir.path, '${prefix}_$stamp.csv'));
-    await file.writeAsString(csv);
-    await Share.shareXFiles([XFile(file.path)], text: 'Sales Tracker export');
-    return file;
+    await saveCsv('${prefix}_$stamp.csv', csv);
   }
 
   static double _r(double v) => double.parse(v.toStringAsFixed(2));

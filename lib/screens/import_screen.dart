@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -26,17 +26,25 @@ class _ImportScreenState extends State<ImportScreen> {
   Future<void> _pickFile() async {
     setState(() => _busy = true);
     try {
+      // withData: true loads bytes on every platform (incl. web, where file
+      // paths aren't available), so a single code path covers all targets.
       final picked = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['csv', 'txt'],
+        withData: true,
       );
-      if (picked == null || picked.files.single.path == null) return;
-      final file = File(picked.files.single.path!);
-      final result =
-          await CsvImportService().importFile(file, _marketplace);
+      if (picked == null) return;
+      final file = picked.files.single;
+      final bytes = file.bytes;
+      if (bytes == null) {
+        _snack('Could not read file contents');
+        return;
+      }
+      final content = utf8.decode(bytes, allowMalformed: true);
+      final result = CsvImportService().importString(content, _marketplace);
       setState(() {
         _result = result;
-        _fileName = picked.files.single.name;
+        _fileName = file.name;
       });
     } catch (e) {
       _snack('Could not read file: $e');

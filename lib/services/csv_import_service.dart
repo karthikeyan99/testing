@@ -1,6 +1,3 @@
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:csv/csv.dart';
 
 import '../models/enums.dart';
@@ -26,12 +23,7 @@ class ImportResult {
 /// by a set of candidate header names (case/space/underscore-insensitive)
 /// rather than fixed positions. Unknown columns are ignored.
 class CsvImportService {
-  /// Reads and maps a CSV file for the given [marketplace].
-  Future<ImportResult> importFile(File file, Marketplace marketplace) async {
-    final raw = await file.readAsString(encoding: utf8);
-    return importString(raw, marketplace);
-  }
-
+  /// Parses raw CSV text into [Sale] records for the given [marketplace].
   ImportResult importString(String raw, Marketplace marketplace) {
     final rows = const CsvToListConverter(
       eol: '\n',

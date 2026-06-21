@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'db/db_init.dart' as db_init;
 import 'providers/inventory_provider.dart';
 import 'providers/sales_provider.dart';
 import 'providers/settings_provider.dart';
 import 'screens/home_shell.dart';
 import 'utils/theme.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Configure the SQLite backend for this platform (web/desktop/mobile).
+  await db_init.initDatabaseFactory();
   runApp(const SalesTrackerApp());
 }
 

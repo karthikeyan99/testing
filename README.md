@@ -33,19 +33,30 @@ This repo contains the Dart source (`lib/`), tests, and project config. Generate
 the platform scaffolding (Android/iOS) once, then run:
 
 ```bash
-# 1. Generate android/ and ios/ folders (keeps pubspec.yaml and lib/ intact)
-flutter create . --platforms=android,ios --project-name sales_tracker
+# 1. Generate platform folders (keeps pubspec.yaml and lib/ intact)
+flutter create . --platforms=android,ios,web --project-name sales_tracker
 
 # 2. Install dependencies
 flutter pub get
 
-# 3. Run on a connected device or emulator
-flutter run
+# 3. (Web only, one time) copy the sqlite3 WASM worker into web/
+dart run sqflite_common_ffi_web:setup
+
+# 4. Run
+flutter run                 # pick a device, or:
+flutter run -d edge         # Chrome/Edge for a quick preview
+flutter run -d <android-id> # full features incl. native share
 
 # Build release artifacts
 flutter build apk        # Android
 flutter build ios        # iOS (needs macOS + Xcode)
+flutter build web        # Web
 ```
+
+The app runs on Android, iOS, web (Chrome/Edge) and desktop. The database
+backend is selected per platform automatically (`lib/db/db_init*.dart`): the
+sqflite plugin on mobile, FFI on desktop, and WASM sqlite on web. CSV export
+opens the share sheet on native and downloads the file on web.
 
 Requires Flutter 3.x (Dart 3). Run the tests with `flutter test`.
 
