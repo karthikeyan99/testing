@@ -39,7 +39,7 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
   final _other = TextEditingController(text: '0');
   final _cost = TextEditingController(text: '0');
 
-  static const _gstRates = [0.0, 3, 5, 12, 18, 28];
+  static const _gstRates = <double>[0, 3, 5, 12, 18, 28];
 
   @override
   void initState() {

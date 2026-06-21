@@ -186,7 +186,7 @@ class _ProductFormState extends State<_ProductForm> {
                   child: DropdownButtonFormField<double>(
                     value: _gstRate,
                     decoration: const InputDecoration(labelText: 'GST %'),
-                    items: const [0.0, 3, 5, 12, 18, 28]
+                    items: const <double>[0, 3, 5, 12, 18, 28]
                         .map((r) => DropdownMenuItem(
                             value: r,
                             child: Text('${r.toStringAsFixed(0)}%')))
