@@ -9,5 +9,7 @@ Future<void> saveCsv(String filename, String csv) async {
   final dir = await getTemporaryDirectory();
   final file = File(p.join(dir.path, filename));
   await file.writeAsString(csv);
-  await Share.shareXFiles([XFile(file.path)], text: 'Sales Tracker export');
+  await SharePlus.instance.share(
+    ShareParams(files: [XFile(file.path)], text: 'Sales Tracker export'),
+  );
 }

@@ -24,7 +24,7 @@ dependencies:
   # CSV import / export
   csv: ^6.0.0
   file_picker: ^8.0.6
-  share_plus: ^9.0.0
+  share_plus: ^12.0.0   # >=10 uses web ^1.0, compatible with sqflite ffi web
 
   # Charts
   fl_chart: ^0.68.0
