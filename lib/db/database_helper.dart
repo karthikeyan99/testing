@@ -7,7 +7,7 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._();
 
   static const _dbName = 'sales_tracker.db';
-  static const _dbVersion = 2;
+  static const _dbVersion = 3;
 
   Database? _db;
 
@@ -33,6 +33,17 @@ class DatabaseHelper {
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await _createSettingsTable(db);
+    }
+    if (oldVersion < 3) {
+      await db.execute('ALTER TABLE sales ADD COLUMN settlementValue REAL');
+      await db.execute('ALTER TABLE sales ADD COLUMN settlementDate INTEGER');
+      // Settlement reports can have several rows per order (sale + return), so
+      // the strict unique key no longer applies; re-import is handled by
+      // replacing rows within the settled date range instead.
+      await db.execute('DROP INDEX IF EXISTS idx_sales_order');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_sales_settle ON sales (settlementDate)',
+      );
     }
   }
 
@@ -78,16 +89,17 @@ class DatabaseHelper {
         isInterState INTEGER NOT NULL DEFAULT 0,
         status TEXT NOT NULL DEFAULT 'delivered',
         buyerState TEXT,
-        notes TEXT
+        notes TEXT,
+        settlementValue REAL,
+        settlementDate INTEGER
       )
     ''');
 
-    // De-duplicate marketplace imports on (marketplace, orderId, sku).
-    await db.execute('''
-      CREATE UNIQUE INDEX idx_sales_order
-      ON sales (marketplace, orderId, sku)
-    ''');
+    await db.execute(
+      'CREATE INDEX idx_sales_order ON sales (marketplace, orderId)',
+    );
     await db.execute('CREATE INDEX idx_sales_date ON sales (orderDate)');
+    await db.execute('CREATE INDEX idx_sales_settle ON sales (settlementDate)');
 
     await _createSettingsTable(db);
   }

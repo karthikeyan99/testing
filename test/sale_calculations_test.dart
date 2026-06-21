@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sales_tracker/models/enums.dart';
+import 'package:sales_tracker/models/payout.dart';
 import 'package:sales_tracker/models/sale.dart';
 import 'package:sales_tracker/models/sales_summary.dart';
 
@@ -75,6 +76,46 @@ void main() {
       final summary = SalesSummary.from([build(qty: 3)]);
       expect(summary.unitsSold, 3);
       expect(summary.grossRevenue, closeTo(3540, 0.01));
+    });
+  });
+
+  group('Payout (settlement)', () {
+    Sale settled(Marketplace m, double value, DateTime when) => Sale(
+          marketplace: m,
+          orderId: 'O',
+          orderDate: when,
+          sku: 'S',
+          productName: 'P',
+          quantity: 1,
+          unitPrice: 0,
+          settlementValue: value,
+          settlementDate: when,
+        );
+
+    test('net payout prefers the real settlement value', () {
+      final s = settled(Marketplace.flipkart, 117.41, DateTime(2026, 6, 19));
+      expect(s.netPayout, closeTo(117.41, 0.001));
+      expect(s.payoutDate, DateTime(2026, 6, 19));
+    });
+
+    test('groups by settlement month and splits by marketplace', () {
+      final months = PayoutMonth.from([
+        settled(Marketplace.flipkart, 100, DateTime(2026, 6, 5)),
+        settled(Marketplace.flipkart, 50, DateTime(2026, 6, 20)),
+        settled(Marketplace.amazon, 70, DateTime(2026, 6, 10)),
+        settled(Marketplace.flipkart, 30, DateTime(2026, 5, 2)),
+        // A return reduces the month total via its negative settlement.
+        settled(Marketplace.flipkart, -20, DateTime(2026, 6, 25)),
+      ]);
+
+      final june = months.firstWhere((m) => m.month == DateTime(2026, 6));
+      expect(june.flipkart, closeTo(130, 0.01)); // 100 + 50 - 20
+      expect(june.amazon, closeTo(70, 0.01));
+      expect(june.total, closeTo(200, 0.01));
+
+      // Sorted newest-first.
+      expect(months.first.month, DateTime(2026, 6));
+      expect(months.last.month, DateTime(2026, 5));
     });
   });
 }

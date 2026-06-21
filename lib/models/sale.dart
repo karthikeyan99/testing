@@ -28,6 +28,16 @@ class Sale {
   final String? buyerState;
   final String? notes;
 
+  /// Actual net amount settled/paid by the marketplace for this line, taken
+  /// directly from a settlement report (Flipkart "Bank Settlement Value" /
+  /// Amazon settlement). Null when the sale was entered/imported without a
+  /// settlement figure, in which case [netSettlement] is used instead.
+  final double? settlementValue;
+
+  /// Date the marketplace paid this out (Flipkart "Payment Date"). Used to
+  /// group payouts by the month money actually reached your bank.
+  final DateTime? settlementDate;
+
   const Sale({
     this.id,
     required this.marketplace,
@@ -47,6 +57,8 @@ class Sale {
     this.status = OrderStatus.delivered,
     this.buyerState,
     this.notes,
+    this.settlementValue,
+    this.settlementDate,
   });
 
   /// Gross amount the buyer paid for this line, after discount, GST inclusive.
@@ -74,6 +86,13 @@ class Sale {
   /// (gross minus the fees they deduct).
   double get netSettlement => grossAmount - totalFees;
 
+  /// The amount that actually hits your bank for this line. Prefers the real
+  /// settlement figure from a report; otherwise falls back to the computed one.
+  double get netPayout => settlementValue ?? netSettlement;
+
+  /// The date to attribute this payout to (settlement date if known).
+  DateTime get payoutDate => settlementDate ?? orderDate;
+
   Map<String, Object?> toMap() {
     return {
       'id': id,
@@ -94,6 +113,8 @@ class Sale {
       'status': status.name,
       'buyerState': buyerState,
       'notes': notes,
+      'settlementValue': settlementValue,
+      'settlementDate': settlementDate?.millisecondsSinceEpoch,
     };
   }
 
@@ -119,6 +140,10 @@ class Sale {
       status: OrderStatus.fromName(map['status'] as String?),
       buyerState: map['buyerState'] as String?,
       notes: map['notes'] as String?,
+      settlementValue: (map['settlementValue'] as num?)?.toDouble(),
+      settlementDate: map['settlementDate'] == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(map['settlementDate'] as int),
     );
   }
 
@@ -141,6 +166,8 @@ class Sale {
     OrderStatus? status,
     String? buyerState,
     String? notes,
+    double? settlementValue,
+    DateTime? settlementDate,
   }) {
     return Sale(
       id: id ?? this.id,
@@ -161,6 +188,8 @@ class Sale {
       status: status ?? this.status,
       buyerState: buyerState ?? this.buyerState,
       notes: notes ?? this.notes,
+      settlementValue: settlementValue ?? this.settlementValue,
+      settlementDate: settlementDate ?? this.settlementDate,
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/enums.dart';
+import '../models/payout.dart';
 import '../models/sale.dart';
 import '../models/sales_summary.dart';
 import '../repositories/product_repository.dart';
@@ -18,6 +19,7 @@ class SalesProvider extends ChangeNotifier {
         _products = productRepository ?? ProductRepository();
 
   List<Sale> _items = [];
+  List<PayoutMonth> _payouts = [];
   bool _loading = false;
   String? _error;
 
@@ -29,6 +31,11 @@ class SalesProvider extends ChangeNotifier {
   String _search = '';
 
   List<Sale> get items => List.unmodifiable(_items);
+
+  /// Net payout per month split by marketplace, computed across ALL sales
+  /// (independent of the active order-date filter), grouped by settlement date.
+  List<PayoutMonth> get payouts => List.unmodifiable(_payouts);
+
   bool get loading => _loading;
   String? get error => _error;
   DateTime get from => _from;
@@ -53,6 +60,9 @@ class SalesProvider extends ChangeNotifier {
     notifyListeners();
     try {
       _items = await _sales.getAll(_filter);
+      // Payouts are computed over all data, not just the filtered view.
+      final all = await _sales.getAll(const SaleFilter());
+      _payouts = PayoutMonth.from(all);
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -103,6 +113,14 @@ class SalesProvider extends ChangeNotifier {
   /// Bulk import (from CSV). Returns rows written.
   Future<int> importSales(List<Sale> sales) async {
     final n = await _sales.insertAll(sales);
+    await load();
+    return n;
+  }
+
+  /// Import a settlement report (idempotent — replaces rows in the settled
+  /// date range for [marketplace]). Returns rows written.
+  Future<int> importSettlement(Marketplace marketplace, List<Sale> sales) async {
+    final n = await _sales.replaceSettlement(marketplace, sales);
     await load();
     return n;
   }

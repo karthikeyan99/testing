@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../models/enums.dart';
 import '../providers/sales_provider.dart';
 import '../services/csv_import_service.dart';
+import '../services/flipkart_settlement_parser.dart';
 
 /// Lets the user pick a Flipkart or Amazon report CSV, preview the parsed rows,
 /// and import them.
@@ -22,6 +23,37 @@ class _ImportScreenState extends State<ImportScreen> {
   ImportResult? _result;
   String? _fileName;
   bool _busy = false;
+  bool _isSettlement = false; // true when an .xlsx settlement file is loaded
+
+  /// Pick and parse the Flipkart "Settled Transactions" .xlsx, which carries
+  /// the real net-payout figures.
+  Future<void> _pickSettlement() async {
+    setState(() => _busy = true);
+    try {
+      final picked = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['xlsx'],
+        withData: true,
+      );
+      if (picked == null) return;
+      final file = picked.files.single;
+      final bytes = file.bytes;
+      if (bytes == null) {
+        _snack('Could not read file contents');
+        return;
+      }
+      final result = FlipkartSettlementParser().parse(bytes);
+      setState(() {
+        _result = result;
+        _fileName = file.name;
+        _isSettlement = true;
+      });
+    } catch (e) {
+      _snack('Could not read file: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   Future<void> _pickFile() async {
     setState(() => _busy = true);
@@ -45,6 +77,7 @@ class _ImportScreenState extends State<ImportScreen> {
       setState(() {
         _result = result;
         _fileName = file.name;
+        _isSettlement = false;
       });
     } catch (e) {
       _snack('Could not read file: $e');
@@ -57,9 +90,12 @@ class _ImportScreenState extends State<ImportScreen> {
     final result = _result;
     if (result == null || result.sales.isEmpty) return;
     setState(() => _busy = true);
-    final n = await context.read<SalesProvider>().importSales(result.sales);
+    final provider = context.read<SalesProvider>();
+    final n = _isSettlement
+        ? await provider.importSettlement(Marketplace.flipkart, result.sales)
+        : await provider.importSales(result.sales);
     setState(() => _busy = false);
-    _snack('Imported $n orders');
+    _snack('Imported $n ${_isSettlement ? "settlement rows" : "orders"}');
     if (mounted) Navigator.pop(context);
   }
 
@@ -73,10 +109,49 @@ class _ImportScreenState extends State<ImportScreen> {
   Widget build(BuildContext context) {
     final result = _result;
     return Scaffold(
-      appBar: AppBar(title: const Text('Import CSV')),
+      appBar: AppBar(title: const Text('Import')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          Card(
+            color: const Color(0xFFE8F5E9),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: const [
+                      Icon(Icons.account_balance_wallet, color: Color(0xFF2E7D32)),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text('Flipkart Settled Transactions (.xlsx)',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'The settlement report with the real "money in your bank" '
+                    'figure. Seller Hub → Payments → Settled Transactions.',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: _busy ? null : _pickSettlement,
+                    icon: const Icon(Icons.upload_file),
+                    label: const Text('Select settlement .xlsx'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Divider(),
+          const SizedBox(height: 8),
+          const Text('Or import an orders CSV',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 12),
           const Text('1. Choose marketplace',
               style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
@@ -123,9 +198,22 @@ class _ImportScreenState extends State<ImportScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${result.sales.length} orders parsed',
+                    Text(
+                        '${result.sales.length} '
+                        '${_isSettlement ? "settlement rows" : "orders"} parsed',
                         style: const TextStyle(
                             fontSize: 18, fontWeight: FontWeight.bold)),
+                    if (_isSettlement)
+                      Builder(builder: (_) {
+                        final net = result.sales
+                            .fold<double>(0, (a, b) => a + b.netPayout);
+                        return Text(
+                          'Net payout in file: ₹${net.toStringAsFixed(0)}',
+                          style: const TextStyle(
+                              color: Color(0xFF2E7D32),
+                              fontWeight: FontWeight.w600),
+                        );
+                      }),
                     if (result.skipped > 0)
                       Text('${result.skipped} empty rows skipped',
                           style: const TextStyle(color: Colors.black54)),
@@ -156,7 +244,7 @@ class _ImportScreenState extends State<ImportScreen> {
                       s.productName.isEmpty ? s.sku : s.productName,
                       maxLines: 1, overflow: TextOverflow.ellipsis),
                   subtitle: Text('#${s.orderId} · Qty ${s.quantity}'),
-                  trailing: Text('₹${s.grossAmount.toStringAsFixed(0)}'),
+                  trailing: Text('₹${s.netPayout.toStringAsFixed(0)}'),
                 )),
             if (result.sales.length > 5)
               Padding(
@@ -168,7 +256,8 @@ class _ImportScreenState extends State<ImportScreen> {
             FilledButton.icon(
               onPressed: (_busy || result.sales.isEmpty) ? null : _confirmImport,
               icon: const Icon(Icons.download_done),
-              label: Text('Import ${result.sales.length} orders'),
+              label: Text('Import ${result.sales.length} '
+                  '${_isSettlement ? "settlement rows" : "orders"}'),
             ),
           ],
           const SizedBox(height: 24),

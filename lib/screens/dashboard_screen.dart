@@ -5,6 +5,7 @@ import '../providers/sales_provider.dart';
 import '../utils/formatters.dart';
 import '../utils/theme.dart';
 import '../widgets/date_range_bar.dart';
+import '../widgets/payout_table.dart';
 import '../widgets/sales_charts.dart';
 import '../widgets/summary_card.dart';
 import 'add_edit_sale_screen.dart';
@@ -49,6 +50,11 @@ class DashboardScreen extends StatelessWidget {
             const SizedBox(height: 12),
             if (provider.loading)
               const LinearProgressIndicator(minHeight: 2),
+            _sectionCard(
+              context,
+              title: 'Net Payout — money in your bank',
+              child: PayoutTable(payouts: provider.payouts),
+            ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: GridView.count(

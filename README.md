@@ -10,9 +10,16 @@ returns, and **net profit** — all in one place, working fully offline.
   units sold, returns; monthly revenue trend and a Flipkart-vs-Amazon split.
 - **Orders** — add/edit sales by hand or import them; search and filter by
   marketplace, status and date range.
+- **Net Payout view** — the headline number: how much money actually reached
+  your bank each month (settlement value, after all fees + GST), split by
+  Flipkart vs Amazon, grouped by settlement date.
+- **Flipkart settlement import** — load the **Settled Transactions `.xlsx`**
+  directly (multi-sheet workbook, headers on row 2). The importer reads the
+  "Orders" sheet and uses the real **Bank Settlement Value** per order.
+  Re-importing the same period safely replaces it.
 - **CSV import** — load the order/sales reports you download from Flipkart
   Seller Hub and Amazon Seller Central. Columns are matched by name, with a
-  preview before importing. Re-imports are de-duplicated by order ID + SKU.
+  preview before importing.
 - **Inventory** — SKUs with cost price, stock, HSN code and low-stock alerts.
   Stock auto-decrements as sales are recorded, and SKUs autofill sale lines.
 - **GST tax reporting** — GST backed out of inclusive prices, split into

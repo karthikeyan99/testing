@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 
 import '../db/database_helper.dart';
+import '../models/enums.dart';
 import '../models/sale.dart';
 
 /// Optional filters applied when querying sales.
@@ -68,19 +69,40 @@ class SaleRepository {
     );
   }
 
-  /// Bulk insert used by CSV import. Returns the number of rows written.
+  /// Bulk insert used by imports. Returns the number of rows written.
   Future<int> insertAll(List<Sale> sales) async {
     final db = await _db;
     final batch = db.batch();
     for (final s in sales) {
-      batch.insert(
-        'sales',
-        s.toMap()..remove('id'),
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      batch.insert('sales', s.toMap()..remove('id'));
     }
     final result = await batch.commit(noResult: false);
     return result.length;
+  }
+
+  /// Idempotent settlement import: clears existing rows for [marketplace] whose
+  /// settlement date falls within the imported range, then inserts the new set.
+  /// This makes re-importing the same (or an overlapping) report safe.
+  Future<int> replaceSettlement(
+    Marketplace marketplace,
+    List<Sale> sales,
+  ) async {
+    if (sales.isEmpty) return 0;
+    final dates = sales
+        .map((s) => s.settlementDate)
+        .whereType<DateTime>()
+        .map((d) => d.millisecondsSinceEpoch)
+        .toList();
+    final db = await _db;
+    if (dates.isNotEmpty) {
+      dates.sort();
+      await db.delete(
+        'sales',
+        where: 'marketplace = ? AND settlementDate BETWEEN ? AND ?',
+        whereArgs: [marketplace.name, dates.first, dates.last],
+      );
+    }
+    return insertAll(sales);
   }
 
   Future<int> update(Sale sale) async {
